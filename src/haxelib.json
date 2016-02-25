@@ -1,0 +1,10 @@
+{
+	"name": "AirConsole",
+	"url" : "",
+	"license": "",
+	"tags": ["airconsole", "javascript"],
+	"description": "Externs for AirConsole",
+	"version": "0.0.1",
+	"releasenote": "",
+	"contributors": ["Luke Cann"]
+}
