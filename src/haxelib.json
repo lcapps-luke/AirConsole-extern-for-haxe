@@ -1,6 +1,6 @@
 {
 	"name": "AirConsole",
-	"url" : "",
+	"url" : "https://github.com/lcapps-luke/AirConsole-extern-for-haxe",
 	"license": "",
 	"tags": ["airconsole", "javascript"],
 	"description": "Externs for AirConsole",
