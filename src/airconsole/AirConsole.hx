@@ -45,7 +45,7 @@ extern class AirConsole {
 	
 	/**
 	 * Gets called when the game console is ready.
-	 * This event also also fires onConnect for all devices that already are
+	 * This event also fires onConnect for all devices that already are
 	 * connected and have loaded your game.
 	 * This event also fires onCustomDeviceStateChange for all devices that are
 	 * connected, have loaded your game and have set a custom Device State.
@@ -122,6 +122,18 @@ extern class AirConsole {
 	 * @param data Data from accelerometer or gyroscope
 	 */
 	public var onDeviceMotion:MotionData->Void;
+	
+	/**
+	 * Gets called if a fullscreen advertisement is shown on this screen.
+	 * In case this event gets called, please mute all sounds.
+	 */
+	public var onAdShow:Void->Void;
+	
+	/**
+	 * Gets called when an advertisement is finished or no advertisement was shown.
+	 * @param ad_was_shown True if an ad was shown and onAdShow was called.
+	 */
+	public var onAdComplete:Bool->Void;
 	
 	/**
 	 * Gets called when the screen sets the active players by calling
@@ -269,6 +281,16 @@ extern class AirConsole {
 	public function navigateTo(url:String):Void;
 	
 	/**
+	 * Opens url in external (default-system) browser. Call this method instead of
+	 * calling window.open. In-App it will open the system's default browser.
+	 * Because of Safari iOS you can only use it with the onclick handler:
+	 * <div onclick="airconsole.openExternalUrl('my-url.com');">Open new window</div>
+	 * OR in JS with assigning element.onclick.
+	 * @param url The url to open
+	 */
+	public function openExternalUrl(url:String):Void;
+	
+	/**
 	 * Shows or hides the default UI.
 	 * @param visible Whether to show or hide the default UI.
 	 */
@@ -302,10 +324,19 @@ extern class AirConsole {
 	 */
 	public function editProfile():Void;
 	
+	/**
+	 * Requests that AirConsole shows a multiscreen advertisment.
+	 * Can only be called by the AirConsole.SCREEN.
+	 * onAdShow is called on all connected devices if an advertisement
+	 * is shown (in this event please mute all sounds).
+	 * onAdComplete is called on all connected devices when the
+	 * advertisement is complete or no advertisement was shown.
+	 */
+	public function showAd():Void;
 	
 	private static function __init__() : Void untyped {
 		#if embed_js
-		haxe.macro.Compiler.includeFile("airconsole/airconsole-1.3.0.js");
+		haxe.macro.Compiler.includeFile("airconsole/airconsole-1.4.0.js");
 		#end
 	}
 }

@@ -28,7 +28,6 @@ typedef Config = {
 	/**
 	 * If set, onDeviceMotion gets called every "device_motion"
 	 * milliseconds with data from the accelerometer and the gyroscope. 
-	 * Recommended value: 100.
 	 * Only for controllers.
 	 */
 	@:optional

@@ -1,7 +1,7 @@
 /**
  * AirConsole.
  * @copyright 2015 by N-Dream AG, Switzerland. All rights reserved.
- * @version 1.3.0
+ * @version 1.4.0
  *
  * IMPORTANT:
  *
@@ -30,8 +30,7 @@
  *           Default: true
  * @property {number|undefined} device_motion - If set, onDeviceMotion gets
  *           called every "device_motion" milliseconds with data from the
- *           accelerometer and the gyroscope. Recommended value: 100.
- *           Only for controllers.
+ *           accelerometer and the gyroscope. Only for controllers.
  */
 /**
  * Your gateway object to AirConsole.
@@ -75,7 +74,7 @@ AirConsole.ORIENTATION_LANDSCAPE = "landscape";
  */
 AirConsole.prototype.message = function(device_id, data) {
   if (this.device_id !== undefined) {
-    this.postMessage_({ action: "message", to: device_id, data: data });
+    AirConsole.postMessage_({ action: "message", to: device_id, data: data });
   }
 };
 
@@ -88,10 +87,9 @@ AirConsole.prototype.broadcast = function(data) {
   this.message(undefined, data);
 };
 
-
 /**
  * Gets called when the game console is ready.
- * This event also also fires onConnect for all devices that already are
+ * This event also fires onConnect for all devices that already are
  * connected and have loaded your game.
  * This event also fires onCustomDeviceStateChange for all devices that are
  * connected, have loaded your game and have set a custom Device State.
@@ -189,6 +187,20 @@ AirConsole.prototype.onEmailAddress = function(email_address) {};
  */
 AirConsole.prototype.onDeviceMotion = function(data) {};
 
+/**
+ * Gets called if a fullscreen advertisement is shown on this screen.
+ * In case this event gets called, please mute all sounds.
+ * @abstract
+ */
+AirConsole.prototype.onAdShow = function() {};
+
+/**
+ * Gets called when an advertisement is finished or no advertisement was shown.
+ * @abstract
+ * @param {boolean} ad_was_shown - True iff an ad was shown and onAdShow was
+ *                                 called.
+ */
+AirConsole.prototype.onAdComplete = function(ad_was_shown) {};
 
 /**
  * Gets called when the screen sets the active players by calling
@@ -265,6 +277,10 @@ AirConsole.prototype.convertPlayerNumberToDeviceId = function(player_number) {
  * @returns {number|undefined}
  */
 AirConsole.prototype.convertDeviceIdToPlayerNumber = function(device_id) {
+  if (!this.devices[AirConsole.SCREEN] ||
+      !this.devices[AirConsole.SCREEN]["players"]) {
+    return;
+  }
   if (!this.device_id_to_player_cache) {
     this.device_id_to_player_cache = {};
     var players = this.devices[AirConsole.SCREEN]["players"];
@@ -473,6 +489,22 @@ AirConsole.prototype.navigateTo = function(url) {
   this.set_("home", url);
 };
 
+/**
+ * Opens url in external (default-system) browser. Call this method instead of
+ * calling window.open. In-App it will open the system's default browser.
+ * Because of Safari iOS you can only use it with the onclick handler:
+ * <div onclick="airconsole.openExternalUrl('my-url.com');">Open new window</div>
+ * OR in JS with assigning element.onclick.
+ * @param {stirng} url - The url to open
+ */
+AirConsole.prototype.openExternalUrl = function(url) {
+  var data = this.devices[this.device_id];
+  if (data.client && data.client.pass_external_url === true) {
+    this.set_("pass_external_url", url);
+  } else {
+    window.open(url);
+  }
+};
 
 /**
  * Shows or hides the default UI.
@@ -530,6 +562,21 @@ AirConsole.prototype.editProfile = function() {
 };
 
 /**
+ * Requests that AirConsole shows a multiscreen advertisment.
+ * Can only be called by the AirConsole.SCREEN.
+ * onAdShow is called on all connected devices if an advertisement
+ * is shown (in this event please mute all sounds).
+ * onAdComplete is called on all connected devices when the
+ * advertisement is complete or no advertisement was shown.
+ */
+AirConsole.prototype.showAd = function() {
+  if (this.device_id != AirConsole.SCREEN) {
+    throw "Only the AirConsole.SCREEN can call showAd!";
+  }
+  this.set_("ad", true);
+};
+
+/**
  * DeviceState contains information about a device in this session.
  * Use the helper methods getUID, getNickname, getProfilePicture and
  * getCustomDeviceState to access this data.
@@ -553,26 +600,7 @@ AirConsole.prototype.editProfile = function() {
 AirConsole.prototype.init_ = function(opts) {
   opts = opts || {};
   var me = this;
-  window.addEventListener('error', function(e) {
-    var stack = undefined;
-    if (e.error && e.error.stack) {
-      stack = e.error.stack;
-    }
-    me.postMessage_({
-                      "action": "jserror",
-                      "url": document.location.href,
-                      "exception": {
-                        "message": e.message,
-                        "error": {
-                          "stack": stack
-                        },
-                        "filename": e.filename,
-                        "lineno": e.lineno,
-                        "colno": e.colno
-                      }
-                    });
-  });
-  me.version = "1.3.0";
+  me.version = "1.4.0";
   me.devices = [];
   me.server_time_offset = opts.synchronize_time ? 0 : false;
   window.addEventListener(
@@ -622,6 +650,13 @@ AirConsole.prototype.init_ = function(opts) {
                 data.device_data._is_profile_update &&
                 game_url_after == game_url) {
               me.onDeviceProfileChange(data.device_id);
+            } else if (data._is_ad_update) {
+              if (data.ad.show != undefined) {
+                me.onAdShow();
+              }
+              if (data.ad.complete != undefined) {
+                me.onAdComplete(data.ad.complete);
+              }
             }
           }
         } else if (data.action == "ready") {
@@ -653,6 +688,12 @@ AirConsole.prototype.init_ = function(opts) {
           }
         } else if (data.action == "email") {
           me.onEmailAddress(data.email);
+        } else if (data.action == "ad") {
+          if (data.complete == undefined) {
+            me.onAdShow();
+          } else {
+            me.onAdComplete(data.complete);
+          }
         }
       },
       false);
@@ -660,7 +701,7 @@ AirConsole.prototype.init_ = function(opts) {
   if (opts.setup_document !== false) {
     this.setupDocument_();
   }
-  this.postMessage_({
+  AirConsole.postMessage_({
     action: "ready",
     version: me.version,
     device_motion: opts.device_motion,
@@ -698,7 +739,7 @@ AirConsole.prototype.getGameUrl_ = function(url) {
  * @private
  * @param {Object} data - the data to be sent to the parent window.
  */
-AirConsole.prototype.postMessage_ = function(data) {
+AirConsole.postMessage_ = function(data) {
   try {
     window.parent.postMessage(data, document.referrer);
   } catch(e) {
@@ -714,7 +755,7 @@ AirConsole.prototype.postMessage_ = function(data) {
  * @param {serializable} value - The value to set.
  */
 AirConsole.prototype.set_ = function(key, value) {
-  this.postMessage_({ action: "set", key: key, value: value });
+  AirConsole.postMessage_({ action: "set", key: key, value: value });
 };
 
 
@@ -776,3 +817,23 @@ AirConsole.prototype.setupDocument_ = function() {
     e.preventDefault();
   });
 };
+
+window.addEventListener('error', function(e) {
+  var stack = undefined;
+  if (e.error && e.error.stack) {
+    stack = e.error.stack;
+  }
+  AirConsole.postMessage_({
+                            "action": "jserror",
+                            "url": document.location.href,
+                            "exception": {
+                              "message": e.message,
+                              "error": {
+                                "stack": stack
+                              },
+                              "filename": e.filename,
+                              "lineno": e.lineno,
+                              "colno": e.colno
+                            }
+                          });
+});
