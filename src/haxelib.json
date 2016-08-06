@@ -4,7 +4,7 @@
 	"license": "MIT",
 	"tags": ["airconsole", "javascript"],
 	"description": "Externs for AirConsole",
-	"version": "0.0.1",
-	"releasenote": "",
+	"version": "1.0.0",
+	"releasenote": "Updated to AirConsole version 1.4.0",
 	"contributors": ["Luke_Cann"]
 }
